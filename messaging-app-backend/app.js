@@ -1,8 +1,7 @@
 const express = require('express');
 var cors = require('cors')
 const { MongoClient, ObjectId } = require('mongodb');
-//const CONNECTION_URL = "mongodb://localhost:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false";
-const CONNECTION_URL = "mongodb+srv://db-root:RJVulMJGQc3n0DXK@cluster0.hudpg.mongodb.net/test";
+const CONNECTION_URL = "mongodb://localhost:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false";
 const DATABASE_NAME = "messenger-db";
 
 var app = express();
