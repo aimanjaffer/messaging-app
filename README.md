@@ -1,4 +1,4 @@
-# Messaging Application
+# Real-time Messaging Application using WebSockets
 ## http://messaging-app-frontend.vercel.app/
 ### Developed by Aiman Jaffer
 #### Tech Stack: MongoDB Atlas, Node.js, React, Express.js, WebSockets, Azure App Service
