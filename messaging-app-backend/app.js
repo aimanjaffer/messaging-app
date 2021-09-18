@@ -1,5 +1,6 @@
 const express = require('express');
-var cors = require('cors')
+var cors = require('cors');
+const bcrypt = require("bcrypt");
 const { MongoClient, ObjectId } = require('mongodb');
 const CONNECTION_URL = "mongodb://localhost:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false";
 const DATABASE_NAME = "messenger-db";
@@ -28,11 +29,19 @@ app.post("/login", (request, response) => {
 	//console.log("login request received for: "+request.body.userName);
 	usersCollection.findOne({userName:request.body.userName}, function(error, result) {
 		if (error)
-			return response.status(500).send(error);      
-        if(result != null)
-            return response.send({"loginSuccessful":true});
-		else
-            return response.send({"loginSuccessful":false});
+			return response.status(500).send(error);
+        else if(result != null){
+            //console.log("result not null");
+            bcrypt.compare(request.body.password, result.passwordHash, (err, same)=>{
+                //console.log("password match: ",same);
+                if(same){
+                    return response.send({"loginSuccessful":true});
+                }else{
+                    return response.send({"loginSuccessful":false});
+                }
+            })
+        }           
+        else return response.send({"loginSuccessful":false});
 	});
 });
 
@@ -68,6 +77,20 @@ app.get("/users/name/:username", (request, response) => {
 		response.send(result);
 	});
 });
+//Get Check if userName is valid during signup
+app.get("/validate/username/:username", (request, response) => {
+	usersCollection.findOne({userName:request.params.username}, function(error, result) {
+		if (error)
+			return response.status(500).send(error);
+        //console.log("result: "+ JSON.stringify(result));
+        if(result != null){
+            response.send({"validUserName" : false});
+        }else{
+            response.send({"validUserName" : true});
+        }
+        
+	});
+});
 //GET All Messages in the database
 app.get("/messages", (request, response) => {
     messagesCollection.find({}).toArray((error, result) => {
@@ -85,6 +108,29 @@ app.get("/messages/id/:id", (request, response) => {
         //console.log("result: "+ JSON.stringify(result));
 		response.send(result);
 	});
+});
+//POST Create New User
+app.post("/users/new", (request, response) => {
+    getAllUserID().then((userIds) => {
+        let contactList = userIds.map((item)=> item._id);
+        //console.log(contactList);
+        //TODO: need to make sure this salt does not change each time??
+        bcrypt.genSalt(10).then((salt)=>{
+            bcrypt.hash(request.body.password, salt).then((passwordHash)=>{
+                let objectToInsert = {...request.body, contacts: contactList, passwordHash: passwordHash};
+                delete objectToInsert.password;
+                usersCollection.insertOne(objectToInsert, function(error, result) {
+                    if (error)
+                        return response.status(500).send(error);      
+                    if(result != null)
+                        return response.send({"signUpSuccessful":true});
+                    else
+                        return response.send({"signUpSuccessful":false});
+                });
+            });
+        });
+    });
+	
 });
 //GET All Messages by ConversationID
 app.get("/messages/:id", (request, response) => {
@@ -162,11 +208,11 @@ app.get("/summaries", (request, response) => {
 });
 //Get the ConversationSummary that is common to two users
 app.post("/summaries", (request, response) => {
-    console.log("POST request received @/summaries with body: "+JSON.stringify(request.body));
+    //console.log("POST request received @/summaries with body: "+JSON.stringify(request.body));
     conversationSummaryCollection.findOne({ participants: { $in: [new ObjectId(request.body.participants[0]), new ObjectId(request.body.participants[1])] } }, (error, result) => {
         if(error)
             return response.status(500).send(error);
-        console.log("result: "+ JSON.stringify(result));
+        //console.log("result: "+ JSON.stringify(result));
         response.send(result);
     }); 
 });
@@ -199,7 +245,7 @@ function createConversationSummary(conversationId, participants){
     conversationSummaryCollection.insertOne(newConversationSummary, function(error, result) {
         if (error)
             throw error;
-        console.log("create new conversationSummary result: "+ JSON.stringify(result));
+        //console.log("create new conversationSummary result: "+ JSON.stringify(result));
       });
 }
 
@@ -210,4 +256,16 @@ function getConversationSummaryID(conversationId, callback){
 			callback(error);
 		return callback(null,result._id);
 	});    
+}
+
+async function getAllUserID(){
+    try{
+        return await usersCollection.find({}, {
+            projection: {
+                _id: 1
+            }
+        }).toArray();
+    }catch(error){
+        console.log(error);
+    }
 }

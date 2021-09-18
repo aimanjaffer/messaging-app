@@ -1,12 +1,12 @@
 import "./AddMessage.css";
-import React from "react";
+import {React, useEffect} from "react";
 import Button from 'react-bootstrap/Button';
 import { useForm } from "react-hook-form";
 import Form from 'react-bootstrap/Form';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 function AddMessage(props) {
-  const { register, handleSubmit, getValues } = useForm();
+  const { register, handleSubmit, getValues, reset, formState } = useForm();
   const formSubmissionHandler = (data, e) => {
     const requestOptions = {
       method: 'POST',
@@ -23,11 +23,15 @@ function AddMessage(props) {
       .then((response) => {
         //console.log("response of insert message: "+JSON.stringify(response));
         if(response?.acknowledged === true){
-          e.target.reset();
           props.onAddMessage(response.insertedId);
         }
       });
   }
+  useEffect(() => {
+    if (formState.isSubmitSuccessful) {
+      reset({ newMessageField: '' });
+    }
+  }, [formState, reset]);
     return (
             <>
               <form onSubmit={handleSubmit(formSubmissionHandler)}>
